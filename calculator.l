@@ -15,7 +15,7 @@ EXP ([Ee][-+]?[0-9]+)
 
 %%
 "+" | /* operadores de caracter unico */
-"−" |
+"-" | 
 "*" |
 "/" |
 "=" |

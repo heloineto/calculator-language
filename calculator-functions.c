@@ -164,9 +164,9 @@ struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast*
   }
 
   a->nodetype = nodetype;
-  a->cond = init;
+  a->init = init;
   a->cond = cond;
-  a->cond = inc;
+  a->inc = inc;
   a->list = list;
   return (struct ast*)a;
 }
@@ -292,6 +292,13 @@ double eval(struct ast* a) {
     if (((struct forLoop*)a)->list) { /* testa se lista de comandos nao eh vazia */
       for (eval(((struct forLoop*)a)->init); eval(((struct forLoop*)a)->cond) != 0; eval(((struct forLoop*)a)->inc)) /* avalia a condicao */
         v = eval(((struct forLoop*)a)->list); /* avalia comandos */
+
+      // eval(((struct forLoop*)a)->init);
+      // while (eval(((struct forLoop*)a)->cond) != 0) /* avalia a condicao */
+      // {
+      //   v = eval(((struct forLoop*)a)->list); /* avalia comandos */
+      //   eval(((struct forLoop*)a)->inc);
+      // }
     }
     break;
   case 'L': eval(a->l); v = eval(a->r); break;

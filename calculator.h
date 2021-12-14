@@ -33,15 +33,15 @@ void symlistfree(struct symlist* sl);
 
 /**
  * tipos de nos
- * + − * /
- * 0−7 operadores de comparacao , 04 igual , 02 menor que , 01 maior que
+ * + - * /
+ * 0-7 operadores de comparacao , 04 igual , 02 menor que , 01 maior que
  * L expressao ou lista de comandos
  * I comando IF
  * W comando WHILE
  * N symbol de referencia
  * = atribuicao
  * S lista de simbolos
- * F chamada de funcao pre−definida
+ * F chamada de funcao pre-definida
  * C chamada de funcao d e f . p/usuario
  *
  * O comando FOR
