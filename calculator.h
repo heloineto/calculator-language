@@ -1,96 +1,117 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdbool.h>
-#include <math.h>
-
-typedef enum NodeType {
-    NT_DOCUMENT, NT_SETTINGS, NT_CLASS, NT_PACKAGE, NT_IDENTIFICATION,
-    NT_MAIN, NT_BEGIN, NT_END, NT_BODYLIST, NT_CHAPTER, NT_SUBSECTION,
-    NT_SECTION, NT_BODY, NT_TEXT, NT_TEXTSTYLE, NT_LIST, NT_NUMBEREDLIST,
-    NT_ITEMLIST, NT_ITENS
-} NodeType;
-
-enum TextStyle { TS_BOLD, TS_ITALIC, TS_UNDERLINE };
-
-typedef struct ASTNode {
-    NodeType nodeType;
-    struct ASTNode* n1;
-    struct ASTNode* n2;
-    struct ASTNode* n3;
-    struct ASTNode* n4;
-} ASTNode;
-
-typedef struct Class {
-    NodeType nodeType;
-    char* content1;
-    char* content2;
-} Class;
-
-typedef struct Identification {
-    NodeType nodeType;
-    char* title;
-    char* author;
-} Identification;
-
-typedef struct Itens {
-    NodeType nodeType;
-    char* content;
-    ASTNode* next;
-} Itens;
-
-typedef struct Package {
-    NodeType nodeType;
-    char* content1;
-    char* content2;
-    struct Package* next;
-} Package;
-
-typedef struct Text {
-    NodeType nodeType;
-    char* content;
-    struct Text* next;
-} Text;
-
-typedef struct StructTextStyle {
-    NodeType nodeType;
-    char* content;
-    enum TextStyle textStyle;
-} TextStyle;
-
-typedef struct TextSubdivision {
-    NodeType nodeType;
-    char* content;
-    ASTNode* n1;
-    ASTNode* n2;
-} TextSubdivision;
-
-//* AST (Abstract Syntax Tree) *//
-void evalAST(ASTNode*);
-void freeAST(ASTNode*);
-ASTNode* newAST(NodeType nodeType, ASTNode* n1, ASTNode* n2, ASTNode* n3, ASTNode* n4);
-ASTNode* newClass(NodeType nodeType, char* content1, char* content2);
-ASTNode* newIdentification(NodeType nodeType, char* n1, char* n2);
-ASTNode* newItems(NodeType nodeType, char* content, ASTNode* next);
-ASTNode* newPackage(NodeType nodeType, char* content1, char* content2, ASTNode* next);
-ASTNode* newText(NodeType nodeType, char* content, ASTNode* next);
-ASTNode* newTextStyle(NodeType nodeType, char* content, enum TextStyle textStyle);
-ASTNode* newTextSubdivision(NodeType nodeType, char* content, ASTNode* n1, ASTNode* n2);
-
-//* Flex *//
-int yylineno;
-FILE* yyin;
+/* Declaracoes para uma calculadora avancada */
+/* interface com o lexer */
+extern int yylineno;
 int yylex();
-void yyerror(const char* s);
 int yyparse();
+void yyerror(char* s, ...);
 
-//* Utils *//
-void copyStr(char** dest, char* src, bool removeBrackets);
-char* numberToStr(long long int value);
-FILE* getFilePtr(char* inFileName);
-char* outFileName;
-FILE* outFilePtr;
-int currChapter;
-int currSection;
-int currSubSection;
+/* tab. de simbolos */
+struct symbol { /* um nome de variavel */
+    char* name;
+    double value;
+    struct ast* func; /* stmt para funcao */
+    struct symlist* syms; /* lista de argumentos */
+};
+
+/* tab. de simbolos de tamaho fixo */
+#define NHASH 9997
+struct symbol symtab[NHASH];
+
+
+struct symbol* lookup(char*);
+
+/* lista de simbolos, para uma lista de argumentos */
+struct symlist {
+    struct symbol* sym;
+    struct symlist* next;
+};
+
+
+struct symlist* newsymlist(struct symbol* sym, struct symlist* next);
+void symlistfree(struct symlist* sl);
+
+
+/**
+ * tipos de nos
+ * + − * /
+ * 0−7 operadores de comparacao , 04 igual , 02 menor que , 01 maior que
+ * Lexpressao ou lista de comandos
+ * I comando IF
+ * W comando WHILE
+ * N symbol de referencia
+ * = atribuicao
+ * S lista de simbolos
+ * F chamada de funcao pre−definida
+ * C chamada de funcao d e f . p/usuario
+ */
+
+
+enum bifs { /* funcoes pre-definidas */
+    B_sqrt = 1,
+    B_exp,
+    B_log,
+    B_print
+};
+/* nos na AST * /
+/* todos tem o "nodetype” inicial em comum */
+
+struct ast {
+    int nodetype;
+    struct ast* l;
+    struct ast* r;
+};
+
+struct fncall { /* funcoes pre-definida */
+    int nodetype; /* tipo F */
+    struct ast* l;
+    enum bifs functype;
+};
+
+struct ufncall { /* funcoes usuario */
+    int nodetype; /* tipo C */
+    struct ast* l; /* lista de argumentos */
+    struct symbol* s;
+};
+
+struct flow {
+    int nodetype; /* tipo I ou W */
+    struct ast* cond; /* condicao */
+    struct ast* tl; /* ramo ”then” ou lista ”do” */
+    struct ast* el; /* ramo opcional ”else” */
+};
+
+struct numval {
+    int nodetype; /* tipo K */
+    double number;
+};
+
+struct symref {
+    int nodetype; /* tipo N */
+    struct symbol* s;
+};
+
+struct symasgn {
+    int nodetype; /* tipo = */
+    struct symbol* s;
+    struct ast* v; /* valor a ser atribuido */
+};
+
+/* construcao de uma AST */
+
+struct ast* newast(int nodetype, struct ast* l, struct ast* r);
+struct ast* newcmp(int cmptype, struct ast* l, struct ast* r);
+struct ast* newfunc(int functype, struct ast* l);
+struct ast* newcall(struct symbol* s, struct ast* l);
+struct ast* newref(struct symbol* s);
+struct ast* newasgn(struct symbol* s, struct ast* v);
+struct ast* newnum(double d);
+struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* tr);
+
+/* definicao de uma funcao */
+void dodef(struct symbol* name, struct symlist* syms, struct ast* stmts);
+
+/* avaliacao de uma AST */
+double eval(struct ast*);
+
+/* deletar e liberar uma AST */
+void treefree(struct ast*);

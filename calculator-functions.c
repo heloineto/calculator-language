@@ -1,568 +1,396 @@
+/**
+ * Funcoes Auxiliares para uma calculadora avancada
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <math.h>
 #include "calculator.h"
 
-int main(int argc, char** argv) {
-  if (argc != 2) {
-    printf("1 argument expected, got %d\n", argc);
-    return 1;
-  }
+ /* funcoes em C para TS */
+ /* funcao hashing */
+static unsigned symhash(char* sym) {
+  unsigned int hash = 0;
+  unsigned c;
 
-  yyin = fopen(argv[1], "r");
+  while (c = *sym++)
+    hash = hash * 9 ^ c;
 
-  if (!yyin) {
-    printf("Error: failed to read file %s\n", argv[1]);
-    return 1;
-  }
-
-  outFilePtr = getFilePtr(argv[1]);
-
-  currChapter = 0;
-  currSection = 1;
-  currSubSection = 1;
-
-  return yyparse();
+  return hash;
 }
 
-//* AST (Abstract Syntax Tree) *//
-void evalAST(ASTNode* a) {
-  if (!a) return;
+struct symbol* lookup(char* sym) {
+  struct symbol* sp = &symtab[symhash(sym) % NHASH];
+  int scount = NHASH;
 
-  switch (a->nodeType) {
-  case NT_DOCUMENT:
-    evalAST(a->n1);
-    freeAST(a->n1);
-    evalAST(a->n2);
-    freeAST(a->n2);
-    evalAST(a->n3);
-    freeAST(a->n3);
-    break;
-  case NT_SETTINGS:
-    evalAST(a->n1);
-    evalAST(a->n2);
-    break;
-  case NT_CLASS:
-    fputs("[//]: # \"", outFilePtr);
+  while (--scount >= 0) {
+    if (sp->name && !strcasecmp(sp->name, sym))
+      return sp;
 
-    Class* class = (Class*)a;
-
-    fputs("\\documentclass[", outFilePtr);
-    fputs(class->content1, outFilePtr);
-    fputs("]", outFilePtr);
-
-    fputs("{", outFilePtr);
-    fputs(class->content2, outFilePtr);
-    fputs("}", outFilePtr);
-
-    fputs("}\"", outFilePtr);
-
-    fputs("\n\n", outFilePtr);
-
-    break;
-  case NT_PACKAGE:
-    fputs("[//]: # \"\n", outFilePtr);
-
-    Package* package = (Package*)a;
-
-    while (package != NULL) {
-
-      fputs("\\package[", outFilePtr);
-      fputs(package->content1, outFilePtr);
-      fputs("]", outFilePtr);
-
-      if (package->content2) {
-        fputs("{", outFilePtr);
-        fputs(package->content2, outFilePtr);
-        fputs("}", outFilePtr);
-      }
-      fputs("\n\n", outFilePtr);
-
-      package = (Package*)package->next;
+    if (!sp->name) { /* nova entrada na TS */
+      sp->name = strdup(sym);
+      sp->value = 0;
+      sp->func = NULL;
+      sp->syms = NULL;
+      return sp;
     }
 
-    fputs("}\"", outFilePtr);
-
-    fputs("\n\n", outFilePtr);
-
-    break;
-
-  case NT_IDENTIFICATION:
-    fputs("# ", outFilePtr);
-
-    Identification* id = (Identification*)a;
-
-    fputs(id->title, outFilePtr);
-    fputs("\n\n", outFilePtr);
-
-    if (id->author) {
-      fputs(id->author, outFilePtr);
-      fputs("\n\n", outFilePtr);
-      fputs("\n\n", outFilePtr);
-    }
-
-    break;
-
-  case NT_MAIN:
-    evalAST(a->n3);
-    break;
-
-  case NT_BODYLIST:
-    evalAST(a->n1);
-    if (a->n2)
-      evalAST(a->n2);
-
-    break;
-
-  case NT_CHAPTER:
-    currSection = 1;
-    currSubSection = 1;
-    struct TextSubdivision* chap = (struct TextSubdivision*)a;
-
-    fputs("## ", outFilePtr);
-    fputs(chap->content, outFilePtr);
-
-    fputs("\n\n", outFilePtr);
-
-    currChapter++;
-
-    break;
-  case NT_SECTION:
-    currSubSection = 1;
-
-    struct TextSubdivision* sec = (struct TextSubdivision*)a;
-
-    fputs("\n#### **", outFilePtr);
-    fputs(numberToStr(currChapter), outFilePtr);
-    fputs(".", outFilePtr);
-    fputs(numberToStr(currSection), outFilePtr);
-    fputs("\t", outFilePtr);
-    fputs(sec->content, outFilePtr);
-    fputs("**\n", outFilePtr);
-    fputs("\n\n", outFilePtr);
-
-    currSection++;
-
-    break;
-  case NT_SUBSECTION:
-    fputs("\n##### **", outFilePtr);
-    struct TextSubdivision* subsec = (struct TextSubdivision*)a;
-
-    fputs(numberToStr(currChapter), outFilePtr);
-    fputs(".", outFilePtr);
-    fputs(numberToStr(currSection), outFilePtr);
-    fputs(".", outFilePtr);
-    fputs(numberToStr(currSubSection), outFilePtr);
-    fputs("\t", outFilePtr);
-    fputs(subsec->content, outFilePtr);
-    fputs("**\n", outFilePtr);
-
-    fputs("\n\n", outFilePtr);
-
-    currSubSection++;
-
-    break;
-  case NT_BODY:
-    evalAST(a->n1);
-    break;
-
-  case NT_TEXT:;
-    Text* txt = (Text*)a;
-
-    while (txt != NULL) {
-      fputs(txt->content, outFilePtr);
-      txt = (Text*)txt->next;
-      fputs(" ", outFilePtr);
-    }
-
-    fputs("\n\n", outFilePtr);
-
-    break;
-
-  case NT_TEXTSTYLE:;
-    struct StructTextStyle* txtst = (struct StructTextStyle*)a;
-
-    switch (txtst->textStyle) {
-    case TS_BOLD:
-      fputs("**", outFilePtr);
-      fputs(txtst->content, outFilePtr);
-      fputs("**", outFilePtr);
-      fputs(" ", outFilePtr);
-      break;
-    case TS_ITALIC:
-      fputs("*", outFilePtr);
-      fputs(txtst->content, outFilePtr);
-      fputs("*", outFilePtr);
-      fputs(" ", outFilePtr);
-      break;
-    case TS_UNDERLINE:
-      fputs("<ins>", outFilePtr);
-      fputs(txtst->content, outFilePtr);
-      fputs("</ins>", outFilePtr);
-      fputs(" ", outFilePtr);
-      break;
-    default:
-      break;
-    }
-
-    break;
-
-  case NT_LIST:
-    evalAST(a->n1);
-    break;
-
-  case NT_NUMBEREDLIST:;
-    Itens* nlist = ((Itens*)a->n1);
-
-    while (nlist != NULL) {
-      fputs("1. ", outFilePtr);
-      fputs(nlist->content, outFilePtr);
-      fputs("\n", outFilePtr);
-      nlist = (Itens*)nlist->next;
-    }
-
-    fputs("\n\n", outFilePtr);
-    break;
-
-  case NT_ITEMLIST:;
-    Itens* ilist = ((Itens*)a->n1);
-
-    while (ilist != NULL) {
-      fputs("* ", outFilePtr);
-      fputs(ilist->content, outFilePtr);
-      fputs("\n", outFilePtr);
-      ilist = (Itens*)ilist->next;
-    }
-
-    fputs("\n\n", outFilePtr);
-    break;
-
-  case NT_ITENS:
-    break;
-
-  default:
-    printf("Erro: Unknown node type on node %d\n", a->nodeType);
-    break;
+    if (++sp >= symtab + NHASH)
+      sp = symtab; /* tenta a prox. entrada */
   }
+  yyerror("overflow na tab. simbolos \n");
+  abort(); /* tabela estah cheia */
 }
 
-void freeAST(ASTNode* a) {
-  if (!a) return;
-
-  switch (a->nodeType) {
-  case NT_DOCUMENT:
-    freeAST(a->n1);
-    freeAST(a->n2);
-    freeAST(a->n3);
-    break;
-  case NT_SETTINGS:
-    freeAST(a->n1);
-    freeAST(a->n2);
-    break;
-  case NT_CLASS:;
-    Class* class = (Class*)a;
-
-    if (class->content1) {
-      free(class->content1);
-      class->content1 = NULL;
-    }
-    if (class->content2) {
-      free(class->content2);
-      class->content2 = NULL;
-    }
-
-    break;
-  case NT_PACKAGE:;
-    Package* package = (Package*)a;
-
-    if (package->content1) {
-      free(package->content1);
-      package->content1 = NULL;
-    }
-    if (package->content2) {
-      free(package->content2);
-      package->content2 = NULL;
-    }
-
-    evalAST((ASTNode*)package->next);
-    package->next = NULL;
-
-    break;
-  case NT_IDENTIFICATION:;
-    Identification* id = (Identification*)a;
-
-    if (id->title) {
-      free(id->title);
-      id->title = NULL;
-    }
-    if (id->author) {
-      free(id->author);
-      id->author = NULL;
-    }
-
-    break;
-  case NT_MAIN:
-    freeAST(a->n1);
-    freeAST(a->n2);
-    freeAST(a->n3);
-    break;
-  case NT_BEGIN:
-    break;
-  case NT_END:
-    break;
-  case NT_BODYLIST:
-    freeAST(a->n1);
-
-    if (a->n2)
-      freeAST(a->n2);
-
-    break;
-  case NT_CHAPTER:;
-    struct TextSubdivision* chapter = (struct TextSubdivision*)a;
-
-    if (chapter->content) {
-      free(chapter->content);
-      chapter->content = NULL;
-    }
-
-    if (chapter->n1) {
-      freeAST(chapter->n1);
-      freeAST(chapter->n2);
-    }
-    break;
-  case NT_SUBSECTION:;
-    struct TextSubdivision* subsection = (struct TextSubdivision*)a;
-
-    if (subsection->content) {
-      free(subsection->content);
-      subsection->content = NULL;
-    }
-
-    freeAST(subsection->n1);
-
-    if (subsection->n2) {
-      freeAST(subsection->n2);
-    }
-    break;
-  case NT_SECTION:;
-    struct TextSubdivision* section = (struct TextSubdivision*)a;
-
-    if (section->content) {
-      free(section->content);
-      section->content = NULL;
-    }
-
-    freeAST(section->n1);
-
-    if (section->n2) {
-      freeAST(section->n2);
-    }
-    break;
-  case NT_BODY:
-    freeAST(a->n1);
-    freeAST(a->n2);
-    break;
-  case NT_TEXT:;
-    Text* text = (Text*)a;
-
-    if (text->content) {
-      free(text->content);
-      text->content = NULL;
-    }
-
-    freeAST((ASTNode*)text->next);
-    break;
-  case NT_TEXTSTYLE:;
-    struct StructTextStyle* textStyle = (struct StructTextStyle*)a;
-
-    if (textStyle->content) {
-      free(textStyle->content);
-      textStyle->content = NULL;
-    }
-    break;
-  case NT_LIST:
-    freeAST(a->n1);
-    break;
-  case NT_NUMBEREDLIST:
-    freeAST(a->n1);
-    break;
-  case NT_ITEMLIST:
-    freeAST(a->n1);
-    break;
-  case NT_ITENS:;
-    Itens* itens = (Itens*)a;
-
-    if (itens->content) {
-      free(itens->content);
-      itens->content = NULL;
-    }
-
-    if (itens->next) {
-      freeAST(itens->next);
-      itens->next = NULL;
-    }
-    break;
-  default:
-    break;
-  }
-
-  if (a) free(a);
-}
-
-ASTNode* newAST(NodeType nodeType, ASTNode* n1, ASTNode* n2, ASTNode* n3, ASTNode* n4) {
-  ASTNode* a = malloc(sizeof(ASTNode));
+struct ast* newast(int nodetype, struct ast* l, struct ast* r) {
+  struct ast* a = malloc(sizeof(struct ast));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->n1 = n1;
-  a->n2 = n2;
-  a->n3 = n3;
-  a->n4 = n4;
-
+  a->nodetype = nodetype;
+  a->l = l;
+  a->r = r;
   return a;
 }
 
-ASTNode* newClass(NodeType nodeType, char* content1, char* content2) {
-  Class* a = malloc(sizeof(Class));
+struct ast* newnum(double d) {
+  struct numval* a = malloc(sizeof(struct numval));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->content1 = content1;
-  a->content2 = content2;
+  a->nodetype = 'K';
+  a->number = d;
 
-  return ((ASTNode*)a);
+  return (struct ast*)a;
 }
 
-ASTNode* newIdentification(NodeType nodeType, char* title, char* author) {
-  Identification* a = malloc(sizeof(Identification));
+struct ast* newcmp(int cmptype, struct ast* l, struct ast* r) {
+  struct ast* a = malloc(sizeof(struct ast));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->title = title;
-  a->author = author;
-
-  return ((ASTNode*)a);
+  a->nodetype = '0' + cmptype;
+  a->l = l;
+  a->r = r;
+  return a;
 }
 
-ASTNode* newItems(NodeType nodeType, char* content, ASTNode* next) {
-  Itens* a = malloc(sizeof(Itens));
+struct ast* newfunc(int functype, struct ast* l) {
+  struct fncall* a = malloc(sizeof(struct fncall));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem espaco");
+    exit(0);
+  }
+  a->nodetype = 'F';
+  a->l = l;
+  a->functype = functype;
+  return (struct ast*)a;
+}
+
+struct ast* newcall(struct symbol* s, struct ast* l) {
+  struct ufncall* a = malloc(sizeof(struct ufncall));
+
+  if (!a) {
+    yyerror("sem espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->content = content;
-  a->next = next;
-
-  return ((ASTNode*)a);
+  a->nodetype = 'C';
+  a->l = l;
+  a->s = s;
+  return (struct ast*)a;
 }
 
-ASTNode* newPackage(NodeType nodeType, char* content1, char* content2, ASTNode* next) {
-  Package* a = malloc(sizeof(Package));
+struct ast* newref(struct symbol* s) {
+  struct symref* a = malloc(sizeof(struct symref));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem-espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->content1 = content1;
-  a->content2 = content2;
-  a->next = (Package*)next;
-
-  return ((ASTNode*)a);
+  a->nodetype = 'N';
+  a->s = s;
+  return (struct ast*)a;
 }
 
-ASTNode* newText(NodeType nodeType, char* content, ASTNode* next) {
-  Text* a = malloc(sizeof(Text));
+struct ast* newasgn(struct symbol* s, struct ast* v) {
+  struct symasgn* a = malloc(sizeof(struct symasgn));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->content = content;
-  a->next = (Text*)next;
-
-  return ((ASTNode*)a);
+  a->nodetype = 'E';
+  a->s = s;
+  a->v = v;
+  return (struct ast*)a;
 }
 
-ASTNode* newTextStyle(NodeType nodeType, char* content, enum TextStyle textStyle) {
-  struct StructTextStyle* a = malloc(sizeof(struct StructTextStyle));
+struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* el) {
+  struct flow* a = malloc(sizeof(struct flow));
 
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
+    yyerror("sem espaco");
+    exit(0);
+  }
+  a->nodetype = nodetype;
+  a->cond = cond;
+  a->tl = tl;
+  a->el = el;
+  return (struct ast*)a;
+}
+
+/* libera uma arvore de AST */
+void treefree(struct ast* a) {
+  switch (a->nodetype) {
+    /* duas subarvores */
+  case '+':
+  case '-':
+  case '*':
+  case '/':
+  case '1': case '2': case '3': case '4': case '5': case '6':
+  case 'L':
+    treefree(a->r);
+    /* uma subarvore */
+  case 'C': case 'F':
+    treefree(a->l);
+    /* sem subarvore */
+  case 'K': case 'N':
+    break;
+  case '=':
+    free(((struct symasgn*)a)->v);
+    break;
+    /* acima de 3 subarvores */
+  case 'I': case 'W':
+    free(((struct flow*)a)->cond);
+    if (((struct flow*)a)->tl) treefree(((struct flow*)a)->tl);
+    if (((struct flow*)a)->el) treefree(((struct flow*)a)->el);
+    break;
+  default: printf("erro interno: free bad node %c\n", a->nodetype);
+  }
+  free(a); /* sempre libera e proprio no */
+}
+
+struct symlist* newsymlist(struct symbol* sym, struct symlist* next) {
+  struct symlist* sl = malloc(sizeof(struct symlist));
+
+  if (!sl) {
+    yyerror("sem espaco");
     exit(0);
   }
 
-  a->nodeType = nodeType;
-  a->content = content;
-  a->textStyle = textStyle;
-
-  return ((ASTNode*)a);
+  sl->sym = sym;
+  sl->next = next;
+  return sl;
 }
 
-ASTNode* newTextSubdivision(NodeType nodeType, char* content, ASTNode* n1, ASTNode* n2) {
-  struct TextSubdivision* a = malloc(sizeof(struct TextSubdivision));
+/* libera uma lista de simbolos */
+void symlistfree(struct symlist* sl) {
+  struct symlist* nsl;
 
+  while (sl) {
+    nsl = sl->next;
+    free(sl);
+    sl = nsl;
+  }
+}
+
+/* etapa principal >> avaliacao de expressoes, comandos, funcoes, ... */
+
+static double callbuiltin(struct fncall*);
+static double calluser(struct ufncall*);
+
+double eval(struct ast* a) {
+  double v;
   if (!a) {
-    printf("Error: memory allocation returned NULL pointer\n");
-    exit(0);
+    yyerror("erro interno, null eval");
+    return 0.0;
   }
 
-  a->nodeType = nodeType;
-  a->content = content;
-  a->n1 = n1;
-  a->n2 = n2;
+  switch (a->nodetype) {
+    /* constante */
+  case 'K': v = ((struct numval*)a)->number; break;
+    /* referencia de nome */
+  case 'N': v = ((struct symref*)a)->s->value; break;
+    /* atribuicao */
+  case '=': v = ((struct symasgn*)a)->s->value = eval(((struct symasgn*)a)->v); break;
+    /* expressoes */
+  case '+': v = eval(a->l) + eval(a->r); break;
+  case '-': v = eval(a->l) - eval(a->r); break;
+  case '*': v = eval(a->l) * eval(a->r); break;
+  case '/': v = eval(a->l) / eval(a->r); break;
+    /* comparacoes */
+  case '1': v = (eval(a->l) > eval(a->r)) ? 1 : 0; break;
+  case '2': v = (eval(a->l) < eval(a->r)) ? 1 : 0; break;
+  case '3': v = (eval(a->l) != eval(a->r)) ? 1 : 0; break;
+  case '4': v = (eval(a->l) == eval(a->r)) ? 1 : 0; break;
+  case '5': v = (eval(a->l) >= eval(a->r)) ? 1 : 0; break;
+  case '6': v = (eval(a->l) <= eval(a->r)) ? 1 : 0; break;
+    /* controle de fluro */
+    /* gramatica permite erpressoes vazias, entao devem ser verificadas */
+    /* if/then/else */
+  case 'I':
+    if (eval(((struct flow*)a)->cond) != 0) { /* verifica condicao */
 
-  return ((ASTNode*)a);
+      if (((struct flow*)a)->tl) { /* ramo verdadeiro */
+        v = eval(((struct flow*)a)->tl);
+      }
+      else
+        v = 0.0; /* valor default */
+    }
+    else {
+      if (((struct flow*)a)->el) { /* ramo falso */
+        v = eval(((struct flow*)a)->el);
+      }
+      else
+        v = 0.0; /*valor default */
+    }
+    break;
+    /* while/do */
+  case 'W':
+    v = 0.0;/* valor default */
+
+    if (((struct flow*)a)->tl) { /* testa se lista de comandos nao eh vazia */
+      while (eval(((struct flow*)a)->cond) != 0) /* avalia a condicao */
+        v = eval(((struct flow*)a)->tl); /* avalia comandos */
+    }
+    break; /* valor do ultimo comando eh valor do while/do */
+    /* lista de comandos */
+  case 'L': eval(a->l); v = eval(a->r); break;
+  case 'F': v = callbuiltin((struct fncall*)a); break;
+  case 'C': v = calluser((struct ufncall*)a); break;
+  default: printf("erro interno: bad node %c\n", a->nodetype);
+  }
+  return v;
 }
 
-//* Utils *//
-void copyStr(char** dest, char* src, bool removeBrackets) {
-  const int n = removeBrackets ? strlen(src) - 2 : strlen(src);
-  *dest = (char*)malloc((sizeof(char) * n) + 1);
+static double callbuiltin(struct fncall* f) {
+  enum bifs functype = f->functype;
+  double v = eval(f->l);
 
-  strncpy(*dest, &src[(removeBrackets ? 1 : 0)], n);
-  (*dest)[n] = '\0';
+  switch (functype) {
+  case B_sqrt:
+    return sqrt(v);
+  case B_exp:
+    return exp(v);
+  case B_log:
+    return log(v);
+  case B_print:
+    printf(" =%4.4g\n", v);
+    return v;
+  default:
+    yyerror("Funcao pre definda %d desconhecida\n", functype);
+    return 0.0;
+  }
 }
 
-char* numberToStr(long long int number) {
-  char* str = (char*)malloc(sizeof(char) * (ceil(log10(number)) + 1));
-  sprintf(str, "%llu", number);
-
-  return str;
+/* funcao definida por usuario */
+void dodef(struct symbol* name, struct symlist* syms, struct ast* func) {
+  if (name->syms) symlistfree(name->syms);
+  if (name->func) treefree(name->func);
+  name->syms = syms;
+  name->func = func;
 }
 
-FILE* getFilePtr(char* inFileName) {
-  outFileName = (char*)malloc(sizeof(char) * strlen(inFileName));
+static double calluser(struct ufncall* f) {
+  struct symbol* fn = f->s; /* nome da funcao */
+  struct symlist* sl; /* argumentos (originais) da funcao */
+  struct ast* args = f->l; /* argumentos (usados) na funcao */
+  double* oldval, * newval; /* salvar valores de argumentos */
+  double v;
+  int nargs;
+  int i;
 
-  /* Change extension (.tex -> .md) */
-  strcpy(outFileName, inFileName);
-  char* lastExt = strrchr(outFileName, '.');
-  if (lastExt) *lastExt = '\0';
-  strcat(outFileName, ".md");
+  if (!fn->func) {
+    yyerror("chamada para funcao %s indefinida", fn->name);
+    return 0;
+  }
 
-  /* Clear file contents */
-  outFilePtr = fopen(outFileName, "w");
-  fclose(outFilePtr);
+  /* contar argumentos */
+  sl = fn->syms;
+  for (nargs = 0; sl; sl = sl->next)
+    nargs++;
+  /* prepara o para salvar argumentos */
+  oldval = (double*)malloc(nargs + sizeof(double));
+  newval = (double*)malloc(nargs * sizeof(double));
 
-  return fopen(outFileName, "a");
+  if (!oldval || !newval) {
+    yyerror("Sem espaco vem %s", fn->name);
+    return 0.0;
+  }
+
+  /* avaliacao de argumentos */
+  for (i = 0; i < nargs; i++) {
+    if (!args) {
+      yyerror("poucos argumentos na chamada da funcao %s", fn->name);
+      free(oldval);
+      free(newval);
+      return 0.0;
+    }
+
+    if (args->nodetype = 'L') { /* se eh uma lista de nos */
+      newval[i] = eval(args->l);
+      args = args->r;
+    }
+    else { /* se eh o final da lista */
+      newval[i] = eval(args);
+      args = NULL;
+    }
+  }
+
+  /* salvar valores (originais) dos argumentos, atribuir novos valores */
+  sl = fn->syms;
+
+  for (i = 0; i < nargs; i++) {
+    struct symbol* s = sl->sym;
+
+    oldval[i] = s->value;
+    s->value = newval[i];
+    sl = sl->next;
+  }
+
+  free(newval);
+
+  /* avaliacao da funcao */
+  v = eval(fn->func);
+
+  /* recolocar os valores (originais) da funcao */
+  sl = fn->syms;
+
+  for (i = 0; i < nargs; i++) {
+    struct symbol* s = sl->sym;
+
+    s->value = oldval[i];
+    sl = sl->next;
+  }
+
+  free(oldval);
+  return v;
 }
 
-//* Flex *//
-void yyerror(char const* s) {
-  fprintf(stderr, "%s\n", s);
+void yyerror(char* s, ...) {
+  va_list ap;
+  va_start(ap, s);
+  fprintf(stderr, "%d: verror : ", yylineno);
+  vfprintf(stderr, s, ap);
+  fprintf(stderr, "\n");
+}
+
+int main() {
+  printf("> ");
+  return yyparse();
 }

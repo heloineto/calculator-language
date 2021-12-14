@@ -1,60 +1,59 @@
+/**
+ * Lexer para uma calculadora avancada
+ */
+
+/* reconhecimento de tokens para a calculadora */
+
 %option noyywrap nodefault yylineno
 %{
-    #include "calculator.h"    
-    #include "calculator.tab.h"    
+    #include "calculator.h"
+    #include "calculator.tab.h"
 %}
 
-letter  [a-zA-Z]
-digit   [0-9]
-space   " "
-special_chars [\.@\-"<"">""("")"","\''"!""?"";"":"]
-characters {digit}|{letter}|{special_chars}
+/* expoente float */
+EXP ([Ee][-+]?[0-9]+)
 
 %%
+"+" | /* operadores de caracter unico */
+"−" |
+"*" |
+"/" |
+"=" |
+"," |
+";" |
+"(" |
+")" { return yytext[0]; } /* operadores de comparacao, todos sao token CMP`*/
+">" { yylval.fn = 1; return CMP; }
+"<" { yylval.fn = 2; return CMP; }
+"<>" { yylval.fn = 3; return CMP; }
+"==" { yylval.fn = 4; return CMP; }
+">=" { yylval.fn = 5; return CMP; }
+"<=" { yylval.fn = 6; return CMP; }
 
-"%".* /* Ignore comments */
+"if" { return IF; } /* palavras-chave */
+"then" { return THEN; }
+"else" { return ELSE; }
+"while" { return WHILE; }
+"do" { return DO; }
+"let" { return LET; }
 
-\\author { return AUTOR; } 
-\\begin { return _BEGIN; }
-\\bf|\\textbf { return BF; }
-\\chapter { return CHAPTER; }
-\\documentclass { return CLASSE; }
-\\end { return _END; }
-\\it|\\textit { return IT; }
-\\par { return PAR;}
-\\section { return SECTION; }
-\\subsection { return SUBSECTION; }
-\\title { return TITULO; }
-\\underline { return UNDERLINE; }
-\\usepackage { return PACOTE; }
-\\newline|\\\\ { return NEWLINE; }
+"sqrt" { yylval.fn = B_sqrt; return FUNC; } /* funcoes pre-definidas */
+"exp" { yylval.fn = B_exp; return FUNC; }
+"log" { yylval.fn = B_log; return FUNC; }
+"print" { yylval.fn = B_print; return FUNC; }
 
-"{"document"}" { return DOCUMENT; }
-"{"enumerate"}" { return ENUMERATE; }
-"{"itemize"}" { return ITEMIZE; }
+[a-zA-Z][a-zA-Z0-9]* { yylval.s = lookup(yytext); return NAME; } /* nomes */
 
-\\item" ".* {
-    copyStr(&yylval.string, &yytext[6], false);
-    return ITEM;
-}
+[0-9]+"."[0-9]*{EXP}? |
+"."?[0-9]+{EXP}? { yylval.d = atof(yytext); return NUMBER; }
 
-("{"|"[")(["\\"\n]|{characters})+("}"|"]") {
-    copyStr(&yylval.string, yytext, true);
-    return NOME;
-}
 
-"{"([" ""\\"\n]|{characters})+"}" {
-    copyStr(&yylval.string, yytext, true);
-    return CONTEUDO;
-}
+"//".*
+[ \t] /* ignora espaco em branco */
 
-{characters}+ {
-    copyStr(&yylval.string, yytext, false);
-    return NOME;
-}
+\\\n { printf("c> "); } /* ignora continuacao de linha */
 
-\t|\n|{space}|\\maketitle {}
+\n { return EOL; }
 
-. { printf("Unknown character %c at line %d \n", *yytext, yylineno); }
-
+. { yyerror("Caracter desconhecido %c\n", *yytext); }
 %%
