@@ -1,0 +1,42 @@
+% After typing in the commands to LaTeX (which are the instructions preceded by
+% the backslash character) and the text of a sample paper, save them in a file
+% with a name ending in .tex, like paper.tex. You can then type latex paper.tex
+% and the typesetting program will run on your file of commands, producing a file
+% ending in .dvi, which is the file that can be sent to a laserprinter (like valkyr,
+% in Margaret Jacks Hall). (If there are any errors in your file of commands,
+% you will be given a message which is usually impossible to interpret. Typical
+% errors involve forgetting the right number of closing brackets or delimiters
+% like & in example sentences. When LaTeX gives an error message and then asks
+% what to do, possible options are to type x to quit and try to find the error
+% in the emacs file, or press <RETURN> to try to continue and find the error by
+% looking at the output document.) To print the file, you type lpr -Pvalkyr
+
+\documentclass[12pt]{article}
+\usepackage{lingmacros}
+\usepackage{tree-dvips}
+
+\title{Esse eh o ultimo}
+\author{bem interessante}
+
+\begin{document}
+\maketitle
+\chapter{Notes for My Paper}
+
+\section{Notes for My Paper}
+
+Don't forget to include examples of topicalization.
+They look like this:
+
+\subsection{How to handle topicalization}
+
+I'll just assume a tree structure like.
+
+\subsection{Mood}
+
+Mood changes when there is a topic, as well as when
+there is WH-movement.  is the mood when
+there is a non-subject topic or WH-phrase in Comp.
+is the mood when there is a subject topic
+or WH-phrase.
+
+\end{document}
