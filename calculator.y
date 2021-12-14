@@ -22,7 +22,7 @@
 %token <fn> FUNC
 %token EOL
 
-%token IF THEN ELSE WHILE DO LET
+%token IF THEN ELSE WHILE DO LET FOR
 
 %nonassoc <fn> CMP
 %right '='
@@ -34,9 +34,10 @@
 %start calclist
 %%
 
-stmt: IF exp THEN list           { $$ = newflow ('I', $2, $4, NULL); }
-    | IF exp THEN list ELSE list { $$ = newflow ('I', $2, $4, $6); }
-    | WHILE exp DO list          { $$ = newflow ('W', $2, $4, NULL); }
+stmt: IF exp THEN list           { $$ = newflow('I', $2, $4, NULL); }
+    | IF exp THEN list ELSE list { $$ = newflow('I', $2, $4, $6); }
+    | WHILE exp DO list          { $$ = newflow('W', $2, $4, NULL); }
+    | FOR '(' exp ';' exp ';' exp ')' list { $$ = newfor('O', $3, $5, $7, $9); }
     | exp
 ;
 

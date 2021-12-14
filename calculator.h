@@ -43,6 +43,8 @@ void symlistfree(struct symlist* sl);
  * S lista de simbolos
  * F chamada de funcao pre−definida
  * C chamada de funcao d e f . p/usuario
+ *
+ * O comando FOR
  */
 
 
@@ -106,6 +108,7 @@ struct ast* newref(struct symbol* s);
 struct ast* newasgn(struct symbol* s, struct ast* v);
 struct ast* newnum(double d);
 struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* tr);
+struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* inc, struct ast* list);
 
 /* definicao de uma funcao */
 void dodef(struct symbol* name, struct symlist* syms, struct ast* stmts);

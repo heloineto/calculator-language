@@ -147,11 +147,16 @@ struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* 
     yyerror("sem espaco");
     exit(0);
   }
+
   a->nodetype = nodetype;
   a->cond = cond;
   a->tl = tl;
   a->el = el;
   return (struct ast*)a;
+}
+
+struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* inc, struct ast* list) {
+  //! Implementar
 }
 
 /* libera uma arvore de AST */
@@ -162,7 +167,7 @@ void treefree(struct ast* a) {
   case '-':
   case '*':
   case '/':
-  case '1': case '2': case '3': case '4': case '5': case '6':
+  case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8':
   case 'L':
     treefree(a->r);
     /* uma subarvore */
@@ -240,6 +245,8 @@ double eval(struct ast* a) {
   case '4': v = (eval(a->l) == eval(a->r)) ? 1 : 0; break;
   case '5': v = (eval(a->l) >= eval(a->r)) ? 1 : 0; break;
   case '6': v = (eval(a->l) <= eval(a->r)) ? 1 : 0; break;
+  case '7': v = (eval(a->l) && eval(a->r)) ? 1 : 0; break;
+  case '8': v = (eval(a->l) || eval(a->r)) ? 1 : 0; break;
     /* controle de fluxo */
     /* gramatica permite expressoes vazias, entao devem ser verificadas */
     /* if/then/else */
