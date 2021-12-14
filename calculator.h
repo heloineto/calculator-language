@@ -82,6 +82,14 @@ struct flow {
     struct ast* el; /* ramo opcional ”else” */
 };
 
+struct forLoop {
+    int nodetype; /* tipo O*/
+    struct ast* init; /* representa a inicialização da variável de controle */
+    struct ast* cond; /* condicao */
+    struct ast* inc; /* incremento do laço */
+    struct ast* list; /* ramo ”then” ou lista ”do” */
+};
+
 struct numval {
     int nodetype; /* tipo K */
     double number;

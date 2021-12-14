@@ -156,18 +156,28 @@ struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* 
 }
 
 struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* inc, struct ast* list) {
-  //! Implementar
+  struct forLoop* a = malloc(sizeof(struct forLoop));
+
+  if (!a) {
+    yyerror("sem espaco");
+    exit(0);
+  }
+
+  a->nodetype = nodetype;
+  a->cond = init;
+  a->cond = cond;
+  a->cond = inc;
+  a->list = list;
+  return (struct ast*)a;
 }
 
 /* libera uma arvore de AST */
 void treefree(struct ast* a) {
   switch (a->nodetype) {
     /* duas subarvores */
-  case '+':
-  case '-':
-  case '*':
-  case '/':
-  case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8':
+  case '+': case '-': case '*': case '/':
+  case '1': case '2': case '3': case '4':
+  case '5': case '6': case '7': case '8':
   case 'L':
     treefree(a->r);
     /* uma subarvore */
@@ -180,7 +190,7 @@ void treefree(struct ast* a) {
     free(((struct symasgn*)a)->v);
     break;
     /* acima de 3 subarvores */
-  case 'I': case 'W':
+  case 'I': case 'W': case 'O':
     free(((struct flow*)a)->cond);
     if (((struct flow*)a)->tl) treefree(((struct flow*)a)->tl);
     if (((struct flow*)a)->el) treefree(((struct flow*)a)->el);
@@ -277,6 +287,13 @@ double eval(struct ast* a) {
     }
     break; /* valor do ultimo comando eh valor do while/do */
     /* lista de comandos */
+  case 'O':
+    v = 0.0;/* valor default */
+    if (((struct forLoop*)a)->list) { /* testa se lista de comandos nao eh vazia */
+      for (eval(((struct forLoop*)a)->init); eval(((struct forLoop*)a)->cond) != 0; eval(((struct forLoop*)a)->inc)) /* avalia a condicao */
+        v = eval(((struct forLoop*)a)->list); /* avalia comandos */
+    }
+    break;
   case 'L': eval(a->l); v = eval(a->r); break;
   case 'F': v = callbuiltin((struct fncall*)a); break;
   case 'C': v = calluser((struct ufncall*)a); break;
