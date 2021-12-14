@@ -36,7 +36,7 @@
 
 stmt: IF exp THEN list           { $$ = newflow ('I', $2, $4, NULL); }
     | IF exp THEN list ELSE list { $$ = newflow ('I', $2, $4, $6); }
-    | WHILE exp DO list          { $$ = newflow ( 'W', $2, $4, NULL); }
+    | WHILE exp DO list          { $$ = newflow ('W', $2, $4, NULL); }
     | exp
 ;
 
@@ -56,7 +56,7 @@ exp:  exp CMP exp   { $$ = newcmp($2, $1, $3); }
     | '(' exp ')'   { $$ = $2; }
     | NUMBER        { $$ = newnum ($1); }
     | NAME          { $$ = newref($1); }
-    | NAME '=' exp  { $$ = newasgn ($1, $3); }  
+    | NAME '=' exp  { $$ = newasgn($1, $3); }  
     | FUNC '('explist ')' { $$ = newfunc($1, $3); }
     | NAME '('explist')'  { $$ = newcall($1, $3); }
 ;

@@ -134,7 +134,7 @@ struct ast* newasgn(struct symbol* s, struct ast* v) {
     exit(0);
   }
 
-  a->nodetype = 'E';
+  a->nodetype = '=';
   a->s = s;
   a->v = v;
   return (struct ast*)a;
@@ -240,8 +240,8 @@ double eval(struct ast* a) {
   case '4': v = (eval(a->l) == eval(a->r)) ? 1 : 0; break;
   case '5': v = (eval(a->l) >= eval(a->r)) ? 1 : 0; break;
   case '6': v = (eval(a->l) <= eval(a->r)) ? 1 : 0; break;
-    /* controle de fluro */
-    /* gramatica permite erpressoes vazias, entao devem ser verificadas */
+    /* controle de fluxo */
+    /* gramatica permite expressoes vazias, entao devem ser verificadas */
     /* if/then/else */
   case 'I':
     if (eval(((struct flow*)a)->cond) != 0) { /* verifica condicao */
@@ -315,8 +315,9 @@ static double calluser(struct ufncall* f) {
   int nargs;
   int i;
 
+
   if (!fn->func) {
-    yyerror("chamada para funcao %s indefinida", fn->name);
+    yyerror("Chamada para funcao %s indefinida", fn->name);
     return 0;
   }
 
@@ -324,12 +325,13 @@ static double calluser(struct ufncall* f) {
   sl = fn->syms;
   for (nargs = 0; sl; sl = sl->next)
     nargs++;
+
   /* prepara o para salvar argumentos */
-  oldval = (double*)malloc(nargs + sizeof(double));
+  oldval = (double*)malloc(nargs * sizeof(double));
   newval = (double*)malloc(nargs * sizeof(double));
 
   if (!oldval || !newval) {
-    yyerror("Sem espaco vem %s", fn->name);
+    yyerror("Sem espaco em %s", fn->name);
     return 0.0;
   }
 
@@ -342,7 +344,7 @@ static double calluser(struct ufncall* f) {
       return 0.0;
     }
 
-    if (args->nodetype = 'L') { /* se eh uma lista de nos */
+    if (args->nodetype == 'L') { /* se eh uma lista de nos */
       newval[i] = eval(args->l);
       args = args->r;
     }

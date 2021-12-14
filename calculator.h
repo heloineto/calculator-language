@@ -35,7 +35,7 @@ void symlistfree(struct symlist* sl);
  * tipos de nos
  * + − * /
  * 0−7 operadores de comparacao , 04 igual , 02 menor que , 01 maior que
- * Lexpressao ou lista de comandos
+ * L expressao ou lista de comandos
  * I comando IF
  * W comando WHILE
  * N symbol de referencia
