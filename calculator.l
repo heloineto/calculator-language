@@ -1,7 +1,7 @@
 %option noyywrap nodefault yylineno
 %{
-    #include "tex-to-md.h"    
-    #include "tex-to-md.tab.h"    
+    #include "calculator.h"    
+    #include "calculator.tab.h"    
 %}
 
 letter  [a-zA-Z]

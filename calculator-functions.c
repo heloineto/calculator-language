@@ -1,4 +1,4 @@
-#include "tex-to-md.h"
+#include "calculator.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {

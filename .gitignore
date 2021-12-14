@@ -1,4 +1,4 @@
-tex-to-md
-tex-to-md.tab.c
-tex-to-md.tab.h
-tex-to-md.lex.c
+calculator
+calculator.tab.c
+calculator.tab.h
+calculator.lex.c

@@ -1,5 +1,5 @@
 %{
-    #include "tex-to-md.h"
+    #include "calculator.h"
 %}
 
 %union {
