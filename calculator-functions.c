@@ -155,7 +155,7 @@ struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* 
   return (struct ast*)a;
 }
 
-struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* inc, struct ast* list) {
+struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* listAndInc) {
   struct forLoop* a = malloc(sizeof(struct forLoop));
 
   if (!a) {
@@ -166,8 +166,7 @@ struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast*
   a->nodetype = nodetype;
   a->init = init;
   a->cond = cond;
-  a->inc = inc;
-  a->list = list;
+  a->listAndInc = listAndInc;
   return (struct ast*)a;
 }
 
@@ -289,16 +288,9 @@ double eval(struct ast* a) {
     /* lista de comandos */
   case 'O':
     v = 0.0;/* valor default */
-    if (((struct forLoop*)a)->list) { /* testa se lista de comandos nao eh vazia */
-      for (eval(((struct forLoop*)a)->init); eval(((struct forLoop*)a)->cond) != 0; eval(((struct forLoop*)a)->inc)) /* avalia a condicao */
-        v = eval(((struct forLoop*)a)->list); /* avalia comandos */
-
-      // eval(((struct forLoop*)a)->init);
-      // while (eval(((struct forLoop*)a)->cond) != 0) /* avalia a condicao */
-      // {
-      //   v = eval(((struct forLoop*)a)->list); /* avalia comandos */
-      //   eval(((struct forLoop*)a)->inc);
-      // }
+    if (((struct forLoop*)a)->listAndInc) { /* testa se lista de comandos nao eh vazia */
+      for (eval(((struct forLoop*)a)->init); eval(((struct forLoop*)a)->cond) != 0;) /* avalia a condicao */
+        v = eval(((struct forLoop*)a)->listAndInc); /* avalia comandos */
     }
     break;
   case 'L': eval(a->l); v = eval(a->r); break;

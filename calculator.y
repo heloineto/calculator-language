@@ -37,7 +37,7 @@
 stmt: IF exp THEN list           { $$ = newflow('I', $2, $4, NULL); }
     | IF exp THEN list ELSE list { $$ = newflow('I', $2, $4, $6); }
     | WHILE exp DO list          { $$ = newflow('W', $2, $4, NULL); }
-    | FOR '(' exp ';' exp ';' exp ')' list { $$ = newfor('O', $3, $5, $7, $9); }
+    | FOR '(' exp ';' exp ';' exp ')' list { $$ = newfor('O', $3, $5, newast('L', $9, $7)); }
     | exp
 ;
 

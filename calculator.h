@@ -86,8 +86,7 @@ struct forLoop {
     int nodetype; /* tipo O*/
     struct ast* init; /* representa a inicialização da variável de controle */
     struct ast* cond; /* condicao */
-    struct ast* inc; /* incremento do laço */
-    struct ast* list; /* ramo ”then” ou lista ”do” */
+    struct ast* listAndInc; /* lista de comandos seguida do incremento */
 };
 
 struct numval {
@@ -116,7 +115,7 @@ struct ast* newref(struct symbol* s);
 struct ast* newasgn(struct symbol* s, struct ast* v);
 struct ast* newnum(double d);
 struct ast* newflow(int nodetype, struct ast* cond, struct ast* tl, struct ast* tr);
-struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* inc, struct ast* list);
+struct ast* newfor(int nodetype, struct ast* init, struct ast* cond, struct ast* listAndInc);
 
 /* definicao de uma funcao */
 void dodef(struct symbol* name, struct symlist* syms, struct ast* stmts);
