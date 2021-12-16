@@ -117,7 +117,7 @@ struct ast* newref(struct symbol* s) {
   struct symref* a = malloc(sizeof(struct symref));
 
   if (!a) {
-    yyerror("sem-espaco");
+    yyerror("sem espaco");
     exit(0);
   }
 
